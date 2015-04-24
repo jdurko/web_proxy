@@ -2,21 +2,27 @@
 #include <stdio.h>
 #include <map>
 #include <pthread.h>
+#include <sstream>
 #include <utility>
 #include <fstream>
 #include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>      // Needed for the socket functions
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+ #include <errno.h>
+ #include <sys/stat.h>  //needed for open
+#include <fcntl.h>     //needed for open
 #define BACKLOG	10
 #define BUF_SIZE	1024
 #define LISTEN_PORT 8888
 #define HTTP_PORT	80
-#define SERVER_IP   "129.120.151.94"
 
+using namespace std;
+//#define SERVER_IP   "0.0.0.0"
 int threadCount = BACKLOG; // total number of users the server will allow communication
 void *client_handler(void *arg);
 int main(int argc, char *argv[]) {
@@ -61,7 +67,7 @@ int main(int argc, char *argv[]) {
 	addr_size = sizeof(struct sockaddr_in);
 	printf("waiting for a client\n");
 	//Thread Creation block
-	while (1) {
+	//while (1) {
 		if (threadCount < 1) {
 			sleep(1);
 		}
@@ -90,7 +96,10 @@ int main(int argc, char *argv[]) {
 			free(sock_tmp);
 			exit(1);
 		}
-	}
+		while(1){
+            continue;
+		}
+	//}
 	return 0;
 
 
@@ -103,19 +112,26 @@ std::map<int, std::string> g_mapwebRecords;
 			g_mapwebRecords.insert(std::pair<int, std::string> (2, "www.youtube.com") );//insert
 			g_mapwebRecords.insert(std::pair<int, std::string> (3, "www.hulu.com") );//insert
 			g_mapwebRecords.insert(std::pair<int, std::string> (4, "www.virus.com") );//insert
-int msg_size;
-	char buf[BUF_SIZE];
+int msg_size,j;
+	char buf[BUF_SIZE],line[1];
 	//int text;
 	int sock = *(int*)sock_desc; //socket initialization
 	char *token;
 	std::string buf1;
+	int loop=1;
+	string see="GE";
 while(1){
 	if (recv(sock, buf, BUF_SIZE, 0)<0){
 		//ERROR_RESPONSE
 	}
-	if (strcmp(buf,"")==0){
-		close(sock);
+	if (strcmp(buf,see.c_str())==0){
+		//close(sock);
+        loop=0;
+        close(sock);
+        exit(1);
+		//free(sock_desc);
 	}
+	if(loop==1){
 	printf(" FIRST THING FIRST %s\n", buf);
 	/* get the first token */
 	token = strtok(buf, "/ HTTP");
@@ -138,11 +154,12 @@ while(1){
 		 printf(" THIRD THING FIRST %s\n", url);
 		// allocate memory to contain file data
 		char* buffer = new char[BUF_SIZE];
-		std::ifstream ifs(url, std::ifstream::binary);
+		//std::ifstream ifs(url, std::ifstream::binary);
+        std::ifstream infile(url);
 
 		// get pointer to associated buffer object
-		std::filebuf* pbuf = ifs.rdbuf();
-		if (pbuf->open(url, std::ifstream::binary)==NULL){
+		//std::filebuf* pbuf = infile.rdbuf();
+		if (infile.good()==false){
 			exist = false;
 			printf(" EXIST FIRST-FALSE %d\n", exist);
 		}
@@ -153,140 +170,148 @@ while(1){
 
 		//File exist in cache
 		if (exist == true){
-			// get file size using buffer's members
-			std::size_t size = pbuf->pubseekoff(0, ifs.end, ifs.in);
-			pbuf->pubseekpos(0, ifs.in);
-			// get file data
-			pbuf->sgetn(buffer, size);
-			ifs.close();
-			if (send(sock, buffer,size , 0) < 0){
+          msg_size= open(url, O_RDWR);
+           printf(" CACHED OPEN ERRNO %d\n", errno);
+     while (read(msg_size,line,1)>=0)
+    {
+     j=write(sock,line,1);
 
-			}
+
+     }
+
+  infile.close();
+  j=close(msg_size);
+close(sock);
+//free(sock_desc);
 		}
 		//file not in cache
 		if (exist == false){
     for (std::map<int, std::string>::iterator it = g_mapwebRecords.begin(); it != g_mapwebRecords.end(); ++it)
     {
-       //std::cout << str1 << " => " << it->second.m_dwRecordID << ","<<it->second.m_szFirstName<<","<<it->second.m_szLastName<<","<<it->second.m_szEmailAddress<<","<<it->second.m_wPIN<<","<<it->second.dw_SSN<<","<<it->second.m_dwDDL<<'\n';
-		if(it->second==token){
+       std::cout<<  it->second.c_str() << "  value of checkin true"<<'\n';
+//		if(it->second.c_str()==token){
+//			checkin==true;
+//		}
+        if(strcmp(it->second.c_str(),weblink)==0){
 			checkin==true;
+			string block="blocking.text";
+			strcpy(weblink,block.c_str());
+			msg_size= open("blocking.text", O_RDWR);
+           printf(" CACHED OPEN ERRNO %d\n", errno);
+     while (read(msg_size,line,1)>=0)
+    {
+     j=write(sock,line,1);
+
+     }
+     close(sock);
+//     free(sock_desc);
+     break;
 		}
+
     }
 	if(checkin==false){
 			int sock_send;
-			struct sockaddr_in	addr_send;
+			struct sockaddr_in	addr_send ;
+			struct addrinfo hints,*servinfo,*p;
 			int	i, text;
 			int	send_len, bytes_sent;
 			char  buff[BUF_SIZE];//contain temporary file name request
 			//TODO CONNECT TO HTTP 80
-			/* create socket for sending data */
-			sock_send = socket(AF_INET, SOCK_STREAM, 0);
-			if (sock_send < 0) {
-				printf("socket() failed\n");
-				exit(0);
-			}
-			/* create socket address structure to connect to */
-			memset(&addr_send, 0, sizeof(addr_send)); /* zero out structure */
-			addr_send.sin_family = AF_INET; /* address family */
-			addr_send.sin_addr.s_addr = htonl(INADDR_ANY);
-			addr_send.sin_port = htons((unsigned short)HTTP_PORT);
+			int status;
+    struct addrinfo host_info;       // The struct that getaddrinfo() fills up with data.
+    struct addrinfo *host_info_list; // Pointer to the to the linked list of host_info's.
+//int sock;
+struct sockaddr_in client;
+int PORT = 80;
+			/* Obtain address(es) matching host/port */
 
-//			/* connect to the HTTP Socket  */
-//			i = connect(sock_send, (struct sockaddr *) &addr_send, sizeof(addr_send));
-//			if (i < 0) {
-//				printf("connect() failed\n");
-//				close(sock_send);
-//				exit(0);
-//			}
-//Check Port number status
-	int statu = bind(text, (struct sockaddr *) &addr_send,
-		sizeof(addr_send));
-	if (statu < 0) {
-		perror("bind()text failed");
-		close(text);
-		exit(1);
-	}
-	// Listen port number
-	statu = listen(text, 5);
-	if (statu < 0) {
-		perror("listen()text failed");
-		close(text);
-		exit(1);
-	}
-			std::string word=weblink;
-			word.replace(1,4,"GET http://" );
-			word=""+word+" HTTP/1.0\n\n";
-			 printf(" WEBLINK THING FIRST %s\n", word.c_str());
-			if (send(sock_send, &word,word.length() , 0) < 0){
+          struct hostent * host = gethostbyname(weblink);
 
-			}
-			 // allocate memory for file content
-			std::string response;
-			if(recv(sock_send,&response,response.size(), 0)<0){
-        //ERROR_CONNECT_RESPONSE
+    if ( (host == NULL) || (host->h_addr == NULL) ) {
+        cout << "Error retrieving DNS information." << endl;
+        close(sock);
+        close(sock_send);
+        //free(sock_desc);
+        exit(1);
     }
- printf(" WEBLINK THING RESPONSE %s\n", response.c_str());
 
-//			if(write(sock_send,word,sizeof(word))==-1){
-//
-//			}
+    bzero(&client, sizeof(client));
+    client.sin_family = AF_INET;
+    client.sin_port = htons( PORT );
+    memcpy(&client.sin_addr, host->h_addr, host->h_length);
 
-			std::streambuf *psbuf1, *backup1;
- 	 std::ofstream filestr1(url,std::ofstream::binary);
-	 // write to outfile
-  //filestr1.write((char *)& response,sizeof(response)) ;
-  filestr1<<response;
-  filestr1.close();
-  	if (send(sock, &response,response.length() , 0) < 0){
+    sock_send = socket(AF_INET, SOCK_STREAM, 0);
 
-			}
-  delete &response;
-  delete &word;
+    if (sock_send < 0) {
+        cout << "Error creating socket." << endl;
+        close(sock_send);
+        close(sock);
+        exit(1);
+    }
 
-  // char b[1];
-//   int fdA = open(url,O_RDWR);
-//    int n_char=0;
-   //Use the read system call to obtain fdA one byte at time
-  // while (read(fdA, b, 1)!=0)
-  //  {
-    // n_char=write(fdB,buffer,1);
-
-  //   }
-
-
-//  	//filestr.open (url);
-////backup = std::cout.rdbuf();     // back up cout's streambuf
-//	 psbuf1 = filestr1.rdbuf();        // get file's streambuf
-//  	std::cout.rdbuf(psbuf1);         // assign streambuf to cout
-//////  iterate over the map
+    if ( connect(sock_send, (struct sockaddr *)&client, sizeof(client)) < 0 ) {
+        close(sock_send);
+        close(sock);
+        cout << "Could not connect" << endl;
+        exit(1);
+    }
 
 
 
+//			 // allocate memory for file content
+
+  stringstream ss;
+    ss << "GET / HTTP/1.1\r\n"
+       << "host:"<<weblink<<"\r\n"
+       << "Accept: text/html,application/json\r\n"
+       << "\r\n\r\n";
+    string request = ss.str();
+
+    if (send(sock_send, request.c_str(), request.length(), 0) != (int)request.length()) {
+        cout << "Error sending request." << endl;
+        exit(1);
+    }
+
+    char cur[5];
+        std::streambuf *psbuf1, *backup1;
+ 	 std::fstream filestr1;
+ 	// int fdB = open(url, O_CREAT | O_RDWR, 0644);
+ 	 filestr1.open(url,std::fstream::in | std::fstream::out | std::fstream::app);
+
+    while ( read(sock_send,cur, 5) >= 0 ) {
+        //cout << cur;
+         filestr1<<cur;
+         text=write(sock,cur,5);
+
+
+    }
+// char cur[1];
+printf(" TEST 1 ERRNO %d\n", errno);
+close(sock_send);
+printf(" TEST 2 ERRNO %d\n", errno);
+ //close(sock);
+//free(sock_desc);
 			//send a connection request
-			//bytes_sent = send(sock_send, buff, BUF_SIZE, 0);
-			//if (bytes_sent < 0){
-
-			//}
-
-		//	int fdB = open("/home/knk0055/public_html/text51.txt", O_CREAT | O_RDWR, 0644);
 
 }
 if(checkin==true){
-buf1="Blocking website :";
-buf1.append(token);
-if (send(sock,&buf1, buf1.length(), 0) < 0){
-				//TODO error  CNP_ACCONT_MESSAGE
-        }
+//   "blocking web content";
+printf(" Blocking website \n");
+   msg_size= open("blocking.text", O_RDWR);
+           printf(" CACHED OPEN ERRNO %d\n", errno);
+     while (read(msg_size,line,1)>=0)
+    {
+     j=write(sock,line,1);
 
-		}
+
+     }
+
 	}
-	delete &exist;
-	delete buffer;
-	delete &checkin;
-	delete &url;
-	//close(sock_send);
-	}
+
 close(sock);
-//free(sock_desc);
+//free sock
 threadCount++;
+}
+}
+}
 }
