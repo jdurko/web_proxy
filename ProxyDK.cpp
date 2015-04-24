@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 	addr_size = sizeof(struct sockaddr_in);
 	printf("waiting for a client\n");
 	//Thread Creation block
-	while (1) {
+	//while (1) {
 		if (threadCount < 1) {
 			sleep(1);
 		}
@@ -96,7 +96,10 @@ int main(int argc, char *argv[]) {
 			free(sock_tmp);
 			exit(1);
 		}
-	}
+		while(1){
+            continue;
+		}
+	//}
 	return 0;
 
 
@@ -115,13 +118,20 @@ int msg_size,j;
 	int sock = *(int*)sock_desc; //socket initialization
 	char *token;
 	std::string buf1;
+	int loop=1;
+	string see="GE";
 while(1){
 	if (recv(sock, buf, BUF_SIZE, 0)<0){
 		//ERROR_RESPONSE
 	}
-	if (strcmp(buf,"")==0){
-		close(sock);
+	if (strcmp(buf,see.c_str())==0){
+		//close(sock);
+        loop=0;
+        close(sock);
+        exit(1);
+		//free(sock_desc);
 	}
+	if(loop==1){
 	printf(" FIRST THING FIRST %s\n", buf);
 	/* get the first token */
 	token = strtok(buf, "/ HTTP");
@@ -162,7 +172,7 @@ while(1){
 		if (exist == true){
           msg_size= open(url, O_RDWR);
            printf(" CACHED OPEN ERRNO %d\n", errno);
-     while (read(msg_size,line,1)>0)
+     while (read(msg_size,line,1)>=0)
     {
      j=write(sock,line,1);
 
@@ -172,6 +182,7 @@ while(1){
   infile.close();
   j=close(msg_size);
 close(sock);
+//free(sock_desc);
 		}
 		//file not in cache
 		if (exist == false){
@@ -187,12 +198,13 @@ close(sock);
 			strcpy(weblink,block.c_str());
 			msg_size= open("blocking.text", O_RDWR);
            printf(" CACHED OPEN ERRNO %d\n", errno);
-     while (read(msg_size,line,1)>0)
+     while (read(msg_size,line,1)>=0)
     {
      j=write(sock,line,1);
 
      }
      close(sock);
+//     free(sock_desc);
      break;
 		}
 
@@ -217,7 +229,9 @@ int PORT = 80;
 
     if ( (host == NULL) || (host->h_addr == NULL) ) {
         cout << "Error retrieving DNS information." << endl;
-        //close(sock_send);
+        close(sock);
+        close(sock_send);
+        //free(sock_desc);
         exit(1);
     }
 
@@ -231,11 +245,13 @@ int PORT = 80;
     if (sock_send < 0) {
         cout << "Error creating socket." << endl;
         close(sock_send);
+        close(sock);
         exit(1);
     }
 
     if ( connect(sock_send, (struct sockaddr *)&client, sizeof(client)) < 0 ) {
         close(sock_send);
+        close(sock);
         cout << "Could not connect" << endl;
         exit(1);
     }
@@ -256,25 +272,25 @@ int PORT = 80;
         exit(1);
     }
 
-    char cur[1];
+    char cur[5];
         std::streambuf *psbuf1, *backup1;
  	 std::fstream filestr1;
  	// int fdB = open(url, O_CREAT | O_RDWR, 0644);
  	 filestr1.open(url,std::fstream::in | std::fstream::out | std::fstream::app);
 
-    while ( read(sock_send,cur, 1) != 0 ) {
-       // cout << cur;
+    while ( read(sock_send,cur, 5) >= 0 ) {
+        //cout << cur;
          filestr1<<cur;
-         text=write(sock,cur,1);
+         text=write(sock,cur,5);
 
 
     }
 // char cur[1];
 printf(" TEST 1 ERRNO %d\n", errno);
-//close(sock_send);
+close(sock_send);
 printf(" TEST 2 ERRNO %d\n", errno);
-  close(sock);
-
+ //close(sock);
+//free(sock_desc);
 			//send a connection request
 
 }
@@ -283,7 +299,7 @@ if(checkin==true){
 printf(" Blocking website \n");
    msg_size= open("blocking.text", O_RDWR);
            printf(" CACHED OPEN ERRNO %d\n", errno);
-     while (read(msg_size,line,1)>0)
+     while (read(msg_size,line,1)>=0)
     {
      j=write(sock,line,1);
 
@@ -295,6 +311,7 @@ printf(" Blocking website \n");
 close(sock);
 //free sock
 threadCount++;
+}
 }
 }
 }
